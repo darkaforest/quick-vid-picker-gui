@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
                 }
                 if info["name"].split(".")[-1] not in ["mp4", "mkv", "mov", "avi", "ts"]:
                     continue
-                if info["size"] <= 1024 * 1:
+                if info["size"] <= 1024 * 100:
                     continue
                 valied_files.append(info)
         return valied_files

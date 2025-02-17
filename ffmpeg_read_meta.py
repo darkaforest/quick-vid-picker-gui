@@ -19,6 +19,7 @@ def get_video_metadata(file_path):
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            encoding='utf-8',
             text=True
         )
         metadata = json.loads(result.stdout)
