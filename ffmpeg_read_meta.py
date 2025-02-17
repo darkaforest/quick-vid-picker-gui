@@ -39,6 +39,13 @@ def get_video_duration(metadata):
             duration = stream["duration"]
     return float(duration)
 
+def get_video_resolution(metadata):
+    for stream in metadata["streams"]:
+        if stream["codec_type"] == "video":
+            width = stream["coded_width"]
+            height = stream["coded_height"]
+    return width, height
+
 
 # 使用示例
 if __name__ == "__main__":
@@ -49,3 +56,4 @@ if __name__ == "__main__":
         print("Video Metadata:")
         print(json.dumps(metadata, indent=2))
         print("Video Duration: " + str(get_video_duration(metadata)))
+        print(get_video_resolution(metadata))

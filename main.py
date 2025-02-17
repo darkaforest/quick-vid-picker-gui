@@ -55,6 +55,7 @@ class FileItemWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
         self.current_thread = None  # 新增实例变量
         self.current_file_path = None  # 新增当前文件路径存储
         self.valid_files = []  # 新增用于存储文件列表
@@ -348,5 +349,5 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)     # 使用高DPI像素图
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.showFullScreen()
+    window.showMaximized()
     sys.exit(app.exec())
