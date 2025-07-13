@@ -26,11 +26,11 @@ class ProcessingThread(QThread):
         total = len(self.files)
         for idx, file_info in enumerate(self.files, 1):
             v = file_info["path"]
-            p = "resources/" + file_info["name"].split(".")[0] + ".jpg"
+            p = file_info["name"].split(".")[0]
             try:
+                self.progress_updated.emit(idx, total, file_info["name"])
                 gen_preview_pic(v, p)
                 v2p[v] = p
-                self.progress_updated.emit(idx, total, file_info["name"])
             except Exception as e:
                 error_msg = f"处理 {file_info['name']} 失���: {str(e)}"
                 self.progress_updated.emit(idx, total, error_msg)
@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         self.valid_files = []  # 新增用于存储文件列表
         self.left_frame = None  # 新增左侧面板引用
         self.initUI()
+        self.setMinimumSize(800, 600)
 
     def initUI(self):
         main_widget = QWidget()
@@ -88,10 +89,6 @@ class MainWindow(QMainWindow):
         center_layout = QVBoxLayout(center_frame)
         center_layout.addWidget(self.center_label)
 
-        # ========== 右侧面板 ==========
-        right_frame = QFrame()
-        right_layout = QVBoxLayout(right_frame)  # 创建新布局
-
         # 元信息面板
         meta_frame = QFrame()
         meta_layout = QFormLayout(meta_frame)
@@ -109,9 +106,9 @@ class MainWindow(QMainWindow):
         self.open_btn = QPushButton("打开")
         self.copy_btn = QPushButton("复制")
         self.del_btn = QPushButton("删除")
-        self.open_btn.setFixedSize(QSize(100, 100))
-        self.copy_btn.setFixedSize(QSize(100, 100))
-        self.del_btn.setFixedSize(QSize(100, 100))
+        self.open_btn.setMinimumSize(QSize(80, 80))
+        self.copy_btn.setMinimumSize(QSize(80, 80))
+        self.del_btn.setMinimumSize(QSize(80, 80))
         self.del_btn.setStyleSheet("""
             QPushButton {
                 background-color: #ff4444;  /* 红色背景 */
@@ -132,8 +129,7 @@ class MainWindow(QMainWindow):
 
         # ========== 主布局 ==========
         main_layout.addWidget(self.left_frame, 1)
-        main_layout.addWidget(center_frame, 5)
-        main_layout.addWidget(right_frame, 2)
+        main_layout.addWidget(center_frame, 7)
 
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
@@ -175,6 +171,7 @@ class MainWindow(QMainWindow):
         self.valid_files = valid_files  # 存储文件列表
         self.left_frame.setEnabled(False)
         self.center_label.setText("正在加载文件...")
+        QApplication.processEvents()  # 强制处理UI事件以更新显示
         # 创建并启动线程
         if self.current_thread and self.current_thread.isRunning():
             self.current_thread.terminate()
@@ -189,12 +186,13 @@ class MainWindow(QMainWindow):
             is_valid, info = self.is_valid_video_file(path)
             if not is_valid or not info:
                 continue
-                item = QListWidgetItem()
-                item.setSizeHint(QSize(200, 80))
-                self.file_list.addItem(item)
-                self.file_list.setItemWidget(item, FileItemWidget(info))
+            item = QListWidgetItem()
+            item.setSizeHint(QSize(150, 60))
+            item.setFlags(item.flags() | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            self.file_list.addItem(item)
+            self.file_list.setItemWidget(item, FileItemWidget(info))
 
-    # 新增状态更新方法
+    # 新增状态���新方法
     def update_processing_status(self, current, total, name):
         self.center_label.setText(f'[{current}/{total}] processing {name}')
         if (current == 0 and total == 0):
@@ -257,7 +255,7 @@ class MainWindow(QMainWindow):
             label_height = int(self.center_label.height() * screen_ratio)
 
             # 使用高质量缩放
-            pixmap = QPixmap(v2p[self.file_list.itemWidget(item).file_path])
+            pixmap = QPixmap("resources/" + v2p[self.file_list.itemWidget(item).file_path])
             if not pixmap.isNull():
                 # 保持宽高比缩放
                 scaled_pixmap = pixmap.scaled(
@@ -295,6 +293,11 @@ class MainWindow(QMainWindow):
                 self.center_label.setText(f"文件已复制到：{target_path}")
             except Exception as e:
                 self.center_label.setText(f"复制失败：{str(e)}")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.current_file_path and self.file_list.currentItem():
+            self.show_file_info(self.file_list.currentItem())
 
     def on_delete_clicked(self):
         if not self.current_file_path:
@@ -367,5 +370,6 @@ if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)     # 使用高DPI像素图
     app = QApplication(sys.argv)
     window = MainWindow()
-    window.showMaximized()
+    window.resize(1200, 800)
+    window.show()
     sys.exit(app.exec())

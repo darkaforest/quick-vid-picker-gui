@@ -29,22 +29,27 @@ def gen_preview_pic(file_path, output_name):
         c += 1
     run([
         'ffmpeg',
+        '-hwaccel', 'auto',
         '-i', 'resources/seg_' + output_name + '%d.jpg',  # 输入文件
         '-filter_complex', 'tile=4x4',  # 视频滤镜：帧率+平铺
         '-vframes', '1',
+        '-c:v', 'mjpeg',
+        '-threads', 'auto',
         '-y',
         'resources/seg_' + output_name + ".jpg"
     ])
     run([
         'ffmpeg',
+        '-hwaccel', 'auto',
         '-i', 'resources/seg_' + output_name + '.jpg',  # 输入文件
-        '-vf', 'scale=3840:2160',  # 视频滤镜：帧率+平铺
+        '-vf', 'scale=3840:2160:flags=fast_bilinear',  # 视频滤镜：帧率+平铺
         '-q:v', '5',
+        '-threads', 'auto',
         '-y',
         'resources/' + output_name + ".jpg"
     ])
     try:
-        command = "rm -f resources/seg_" + 'preview' + "*"
+        command = "rm -f resources/seg_" + "*"
         subprocess.run(command, shell=True, check=True, text=True)
         print("成功删除匹配文件。")
     except subprocess.CalledProcessError as e:
@@ -69,6 +74,8 @@ def gen_preview_pic0(file_path, output_path, ss):
         '-ss', str(ss),  # 视频滤镜：帧率+平铺
         '-i', file_path,  # 输入文件
         '-vframes', '1',
+        '-vsync', 'vfr',
+        '-threads', 'auto',
         '-y',
         output_path
     ])
