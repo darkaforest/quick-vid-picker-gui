@@ -34,10 +34,17 @@ def get_video_metadata(file_path):
 
 def get_video_duration(metadata):
     duration = 0
-    for stream in metadata["streams"]:
-        if stream["codec_type"] == "video":
-            duration = stream["duration"]
-    return float(duration)
+    for stream in metadata.get("streams", []):
+        if stream.get("codec_type") == "video":
+            duration_value = stream.get("duration")
+            if duration_value is not None:
+                try:
+                    duration = float(duration_value)
+                    break  # Found valid duration, exit loop
+                except ValueError:
+                    # Handle case where duration exists but isn't a valid number
+                    print(f"Warning: Invalid duration value '{duration_value}' found in video stream")
+    return duration
 
 def get_video_resolution(metadata):
     for stream in metadata["streams"]:
@@ -49,7 +56,7 @@ def get_video_resolution(metadata):
 
 # 使用示例
 if __name__ == "__main__":
-    video_path = "resources/input.mp4"  # 替换为你的视频路径
+    video_path = "resources/input5.mkv"  # 替换为你的视频路径
     metadata = get_video_metadata(video_path)
 
     if metadata:

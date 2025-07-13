@@ -27,9 +27,14 @@ class ProcessingThread(QThread):
         for idx, file_info in enumerate(self.files, 1):
             v = file_info["path"]
             p = "resources/" + file_info["name"].split(".")[0] + ".jpg"
-            gen_preview_pic(v, p)
-            v2p[v] = p
-            self.progress_updated.emit(idx, total, file_info["name"])
+            try:
+                gen_preview_pic(v, p)
+                v2p[v] = p
+                self.progress_updated.emit(idx, total, file_info["name"])
+            except Exception as e:
+                error_msg = f"处理 {file_info['name']} 失���: {str(e)}"
+                self.progress_updated.emit(idx, total, error_msg)
+                print(error_msg)
         self.progress_updated.emit(0, 0, "")
         self.processing_finished.emit()  # 处理完成后发出信号
 
@@ -128,6 +133,7 @@ class MainWindow(QMainWindow):
         # ========== 主布局 ==========
         main_layout.addWidget(self.left_frame, 1)
         main_layout.addWidget(center_frame, 5)
+        main_layout.addWidget(right_frame, 2)
 
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
@@ -165,7 +171,7 @@ class MainWindow(QMainWindow):
 
     def load_files(self, folder):
         self.file_list.clear()
-        valid_files = self.prepare_data(folder)
+        valid_files = self.prepare_valid_data(folder)
         self.valid_files = valid_files  # 存储文件列表
         self.left_frame.setEnabled(False)
         self.center_label.setText("正在加载文件...")
@@ -180,17 +186,9 @@ class MainWindow(QMainWindow):
         self.current_thread.start()
         for fname in os.listdir(folder):
             path = os.path.join(folder, fname)
-            if os.path.isfile(path):
-                info = {
-                    "name": fname,
-                    "size": os.path.getsize(path) // 1024,
-                    "mtime": os.path.getmtime(path),
-                    "path": path
-                }
-                if info["name"].split(".")[-1].lower() not in ["mp4", "mkv", "mov", "avi", "ts", "flv", "f4v"]:
-                    continue
-                if info["size"] <= 1024 * 100:
-                    continue
+            is_valid, info = self.is_valid_video_file(path)
+            if not is_valid or not info:
+                continue
                 item = QListWidgetItem()
                 item.setSizeHint(QSize(200, 80))
                 self.file_list.addItem(item)
@@ -202,31 +200,42 @@ class MainWindow(QMainWindow):
         if (current == 0 and total == 0):
             self.center_label.clear()
 
-    def prepare_data(self, folder):
-        valied_files = []
+    def is_valid_video_file(self, file_path):
+        """验证是否为有效的视频文件"""
+        if not os.path.isfile(file_path):
+            return False, None
+
+        # 获取文件信息
+        try:
+            file_size = os.path.getsize(file_path) // 1024  # KB
+            file_name = os.path.basename(file_path)
+            file_ext = file_name.split(".")[-1].lower() if "." in file_name else ""
+
+            # 检查文件扩展名和大小
+            if file_ext not in ["mp4", "mkv", "mov", "avi", "ts", "flv", "f4v"]:
+                return False, None
+            if file_size <= 1024 * 1:  # 小于100MB
+                return False, None
+
+            # 返回文件信息
+            return True, {
+                "name": file_name,
+                "size": file_size,
+                "mtime": os.path.getmtime(file_path),
+                "path": file_path
+            }
+        except Exception as e:
+            print(f"验证文件 {file_path} 时出错: {str(e)}")
+            return False, None
+
+    def prepare_valid_data(self, folder):
+        valid_files = []
         for fname in os.listdir(folder):
             path = os.path.join(folder, fname)
-            if os.path.isfile(path):
-                info = {
-                    "name": fname,
-                    "size": os.path.getsize(path) // 1024,
-                    "mtime": os.path.getmtime(path),
-                    "path": path
-                }
-                if info["name"].split(".")[-1] not in ["mp4", "mkv", "mov", "avi", "ts"]:
-                    continue
-                if info["size"] <= 1024 * 100:
-                    continue
-                valied_files.append(info)
-        return valied_files
-
-    def process_data(self, valied_files):
-        os.makedirs("resources", exist_ok=True)
-        for i in range(0, len(valied_files) - 1):
-            info = valied_files[i]
-            self.center_label.setText('[' + str(i + 1) + '/' + str(len(valied_files)) + ']' 'processing ' + info["name"] + '')
-            gen_preview_pic(info["path"], "resources/" + info["name"].split(".")[0] + ".jpg")
-
+            is_valid, info = self.is_valid_video_file(path)
+            if is_valid and info:
+                valid_files.append(info)
+        return valid_files
     def handle_processing_completed(self):
         """处理完成后的回调"""
         self.left_frame.setEnabled(True)
@@ -339,10 +348,19 @@ class MainWindow(QMainWindow):
                         elif os.path.isdir(file_path):
                             shutil.rmtree(file_path)
                     except Exception as e:
-                        print(f"删除 {file_path} 失败: {e}")
-                print("预览图已清理")
+                        error_msg = f"删除 {file_path} 失败: {str(e)}"
+                        print(error_msg)
+                        if hasattr(self, 'center_label'):
+                            self.center_label.setText(error_msg)
+                success_msg = "预览图已清理"
+                print(success_msg)
+                if hasattr(self, 'center_label'):
+                    self.center_label.setText(success_msg)
             except Exception as e:
-                print(f"清理预览目录失败: {e}")
+                error_msg = f"清理预览目录失败: {str(e)}"
+                print(error_msg)
+                if hasattr(self, 'center_label'):
+                    self.center_label.setText(error_msg)
 
 if __name__ == "__main__":
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)  # 启用高DPI缩放
