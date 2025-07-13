@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QFileDialog,
     QVBoxLayout, QHBoxLayout, QListWidget, QPushButton,
@@ -181,11 +182,7 @@ class MainWindow(QMainWindow):
         # 连接完成信号
         self.current_thread.processing_finished.connect(self.handle_processing_completed)
         self.current_thread.start()
-        for fname in os.listdir(folder):
-            path = os.path.join(folder, fname)
-            is_valid, info = self.is_valid_video_file(path)
-            if not is_valid or not info:
-                continue
+        for info in self.valid_files:
             item = QListWidgetItem()
             item.setSizeHint(QSize(150, 60))
             item.setFlags(item.flags() | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
@@ -233,6 +230,7 @@ class MainWindow(QMainWindow):
             is_valid, info = self.is_valid_video_file(path)
             if is_valid and info:
                 valid_files.append(info)
+        valid_files.sort(key=lambda x: x["size"], reverse=True)
         return valid_files
     def handle_processing_completed(self):
         """处理完成后的回调"""
@@ -339,7 +337,8 @@ class MainWindow(QMainWindow):
 
     def cleanup_previews(self):
         """清理预览图目录"""
-        preview_dir = "resources"
+        # 使用绝对路径确保跨平台兼容性
+        preview_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resources")
         if os.path.exists(preview_dir):
             try:
                 # 删除目录内所有文件

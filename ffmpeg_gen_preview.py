@@ -1,5 +1,7 @@
 import subprocess
 import json
+import glob
+import os
 
 from ffmpeg_read_meta import get_video_duration, get_video_metadata, get_video_resolution
 
@@ -49,10 +51,12 @@ def gen_preview_pic(file_path, output_name):
         'resources/' + output_name + ".jpg"
     ])
     try:
-        command = "rm -f resources/seg_" + "*"
-        subprocess.run(command, shell=True, check=True, text=True)
+        # 使用跨平台的方式删除文件
+        for file_path in glob.glob('resources/seg_*'):
+            if os.path.exists(file_path):
+                os.remove(file_path)
         print("成功删除匹配文件。")
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(f"删除失败，错误信息：{e}")
     # ffmpeg -i preview%d.jpg -filter_complex tile=4x4 -vframes 1 output2.jpg
     # run([
